@@ -1,3 +1,12 @@
-node_modules/
+# Environment variables
 .env
-.DS_Store
+
+# Google Cloud credentials
+config/
+google-cloud-credentials.json
+
+# Temporary audio files
+temp/
+
+# Node modules
+node_modules/
