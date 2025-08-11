@@ -17,26 +17,44 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = twilio(accountSid, authToken);
 const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
-// Google Cloud Speech-to-Text client
+// Google Cloud credentials setup
+let googleCredentials;
+
+if (process.env.GOOGLE_CREDENTIALS_JSON) {
+    // Method 1: Single JSON string (easier)
+    try {
+        googleCredentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+        console.log('? Using JSON credentials');
+    } catch (error) {
+        console.error('? Error parsing GOOGLE_CREDENTIALS_JSON:', error.message);
+    }
+} else if (process.env.GOOGLE_CLOUD_PROJECT_ID) {
+    // Method 2: Individual environment variables  
+    googleCredentials = {
+        projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+        private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL
+    };
+    console.log('? Using individual env vars');
+}
+
+// Debug credentials (remove in production)
+if (googleCredentials) {
+    console.log('Google Cloud Credentials Check:');
+    console.log('Project ID:', googleCredentials.project_id || googleCredentials.projectId ? '? Set' : '? Missing');
+    console.log('Client Email:', googleCredentials.client_email ? '? Set' : '? Missing');
+    console.log('Private Key:', googleCredentials.private_key ? '? Set' : '? Missing');
+    console.log('Client Email:', googleCredentials.client_email);
+} else {
+    console.log('? No Google Cloud credentials found');
+}
+
 const speechClient = new speech.SpeechClient({
-    credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS ? 
-        { keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS } :
-        {
-            projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-            private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-            client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL
-        }
+    credentials: googleCredentials
 });
 
-// Google Cloud Text-to-Speech client  
 const ttsClient = new textToSpeech.TextToSpeechClient({
-    credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS ? 
-        { keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS } :
-        {
-            projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-            private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-            client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL
-        }
+    credentials: googleCredentials
 });
 
 // In-memory storage for user sessions and orders
@@ -309,13 +327,24 @@ app.post('/webhook', async (req, res) => {
         if (req.body.MediaUrl0 && req.body.MediaContentType0 && 
             req.body.MediaContentType0.startsWith('audio/')) {
             
+            // Voice feature temporarily disabled for deployment
+            const errorResponse = `??? Voice ordering is temporarily unavailable. Please send a text message instead!
+            
+You can type your order using commands like:
+• "menu" - to see our menu
+• "add M1 2" - to add items
+• "cart" - to view your order`;
+            
+            await sendResponse(fromNumber, errorResponse, false);
+            return res.status(200).send('Voice feature disabled');
+            
+            /* Voice processing code - uncomment when credentials are set up
             isVoiceMessage = true;
-            session.preferVoice = true; // User prefers voice interaction
+            session.preferVoice = true;
             
             console.log(`Received voice message from ${fromNumber}`);
             
             try {
-                // Download and transcribe voice message
                 const audioUrl = req.body.MediaUrl0;
                 const audioFilename = path.join(tempDir, `audio_${Date.now()}.ogg`);
                 
@@ -331,16 +360,12 @@ app.post('/webhook', async (req, res) => {
                 
             } catch (error) {
                 console.error('Error processing voice message:', error);
-                const errorResponse = `??? Sorry, I couldn't understand your voice message. Please try again or send a text message.
-                
-You can also type your order using commands like:
-• "menu" - to see our menu
-• "add M1 2" - to add items
-• "cart" - to view your order`;
+                const errorResponse = `??? Sorry, I couldn't understand your voice message. Please try again or send a text message.`;
                 
                 await sendResponse(fromNumber, errorResponse, false);
                 return res.status(200).send('Error response sent');
             }
+            */
             
         } else {
             // Regular text message
