@@ -327,24 +327,26 @@ app.post('/webhook', async (req, res) => {
         if (req.body.MediaUrl0 && req.body.MediaContentType0 && 
             req.body.MediaContentType0.startsWith('audio/')) {
             
-            // Voice feature temporarily disabled for deployment
-            const errorResponse = `??? Voice ordering is temporarily unavailable. Please send a text message instead!
-            
+            // Check if Google Cloud credentials are available
+            if (!googleCredentials) {
+                const errorResponse = `??? Voice ordering is temporarily unavailable (credentials not configured). Please send a text message instead!
+                
 You can type your order using commands like:
 • "menu" - to see our menu
 • "add M1 2" - to add items
 • "cart" - to view your order`;
+                
+                await sendResponse(fromNumber, errorResponse, false);
+                return res.status(200).send('Voice feature disabled - no credentials');
+            }
             
-            await sendResponse(fromNumber, errorResponse, false);
-            return res.status(200).send('Voice feature disabled');
-            
-            /* Voice processing code - uncomment when credentials are set up
             isVoiceMessage = true;
             session.preferVoice = true;
             
             console.log(`Received voice message from ${fromNumber}`);
             
             try {
+                // Download and transcribe voice message
                 const audioUrl = req.body.MediaUrl0;
                 const audioFilename = path.join(tempDir, `audio_${Date.now()}.ogg`);
                 
@@ -360,12 +362,16 @@ You can type your order using commands like:
                 
             } catch (error) {
                 console.error('Error processing voice message:', error);
-                const errorResponse = `??? Sorry, I couldn't understand your voice message. Please try again or send a text message.`;
+                const errorResponse = `??? Sorry, I couldn't understand your voice message. Please try again or send a text message.
+                
+You can also type your order using commands like:
+• "menu" - to see our menu
+• "add M1 2" - to add items
+• "cart" - to view your order`;
                 
                 await sendResponse(fromNumber, errorResponse, false);
                 return res.status(200).send('Error response sent');
             }
-            */
             
         } else {
             // Regular text message
