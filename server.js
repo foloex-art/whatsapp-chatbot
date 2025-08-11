@@ -19,12 +19,24 @@ const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
 // Google Cloud Speech-to-Text client
 const speechClient = new speech.SpeechClient({
-    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS // Path to your service account key
+    credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS ? 
+        { keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS } :
+        {
+            projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+            private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL
+        }
 });
 
 // Google Cloud Text-to-Speech client  
 const ttsClient = new textToSpeech.TextToSpeechClient({
-    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
+    credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS ? 
+        { keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS } :
+        {
+            projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+            private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL
+        }
 });
 
 // In-memory storage for user sessions and orders
